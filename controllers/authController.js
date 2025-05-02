@@ -64,13 +64,19 @@ exports.signup = async (req, res) => {
 // Login Controller
 exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body;
-    console.log('Login attempt for email:', email);
+    const { email, username, password } = req.body;
+    console.log('Login attempt for:', email || username);
 
-    // Check if user exists
-    const user = await User.findOne({ email });
+    // Use whichever is provided
+    const user = await User.findOne({
+      $or: [
+        { email: email || "" },
+        { username: username || "" }
+      ]
+    });
+
     if (!user) {
-      console.log('No user found with email:', email);
+      console.log('No user found with email or username:', email, username);
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials'
@@ -79,10 +85,8 @@ exports.login = async (req, res) => {
 
     // Check password
     const isMatch = await user.comparePassword(password);
-    console.log('Password match result:', isMatch);
-    
     if (!isMatch) {
-      console.log('Password mismatch for user:', email);
+      console.log('Password mismatch for user:', email || username);
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials'
@@ -101,8 +105,6 @@ exports.login = async (req, res) => {
       secure: process.env.NODE_ENV === 'production',
       maxAge: 24 * 60 * 60 * 1000 // 24 hours
     });
-
-    console.log('User logged in successfully:', { id: user._id, username: user.username, email: user.email });
 
     res.status(200).json({
       success: true,

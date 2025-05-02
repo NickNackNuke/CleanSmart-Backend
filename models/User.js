@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
+// const bcrypt = require('bcryptjs'); // No longer needed
 
 const userSchema = new mongoose.Schema({
   username: {
@@ -34,44 +34,28 @@ const userSchema = new mongoose.Schema({
   collection: 'user'
 });
 
-// Hash password before saving
-userSchema.pre('save', async function(next) {
-  try {
-    // Only hash the password if it has been modified (or is new)
-    if (!this.isModified('password')) return next();
+// REMOVE password hashing middleware
+// userSchema.pre('save', async function(next) {
+//   try {
+//     if (!this.isModified('password')) return next();
+//     const salt = await bcrypt.genSalt(10);
+//     this.password = await bcrypt.hash(this.password, salt);
+//     next();
+//   } catch (error) {
+//     next(error);
+//   }
+// });
 
-    // Generate a salt
-    const salt = await bcrypt.genSalt(10);
-    
-    // Hash the password along with our new salt
-    const hashedPassword = await bcrypt.hash(this.password, salt);
-    
-    // Override the cleartext password with the hashed one
-    this.password = hashedPassword;
-    next();
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Method to compare password
+// Plain text password comparison
 userSchema.methods.comparePassword = async function(candidatePassword) {
-  try {
-    // Use bcrypt to compare the provided password with the hashed password
-    const isMatch = await bcrypt.compare(candidatePassword, this.password);
-    return isMatch;
-  } catch (error) {
-    throw error;
-  }
+  return candidatePassword === this.password;
 };
 
-// Add logging for model operations
 userSchema.post('save', function(doc) {
   console.log('User saved:', {
     id: doc._id,
     username: doc.username,
     email: doc.email,
-    // Don't log the password
   });
 });
 
@@ -81,7 +65,6 @@ userSchema.post('findOne', function(doc) {
       id: doc._id,
       username: doc.username,
       email: doc.email,
-      // Don't log the password
     });
   } else {
     console.log('No user found');
