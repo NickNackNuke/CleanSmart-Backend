@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
-// const bcrypt = require('bcryptjs'); // No longer needed
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
   fullName: {
@@ -28,19 +29,25 @@ const userSchema = new mongoose.Schema({
 // Drop all indexes and create only email index
 userSchema.index({ email: 1 }, { unique: true });
 
-// REMOVE password hashing middleware
-// userSchema.pre('save', async function(next) {
-//   try {
-//     if (!this.isModified('password')) return next();
-//     const salt = await bcrypt.genSalt(10);
-//     this.password = await bcrypt.hash(this.password, salt);
-//     next();
-//   } catch (error) {
-//     next(error);
-//   }
-// });
+// Generate JWT for password reset
+userSchema.methods.generateResetToken = function() {
+  return jwt.sign(
+    { id: this._id, email: this.email },
+    process.env.JWT_SECRET || 'your-secret-key',
+    { expiresIn: '1h' }
+  );
+};
 
-// Plain text password comparison
+// Verify password reset token
+userSchema.statics.verifyPasswordResetToken = function(token) {
+  try {
+    return jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+  } catch (error) {
+    return null;
+  }
+};
+
+// Compare password
 userSchema.methods.comparePassword = async function(candidatePassword) {
   return candidatePassword === this.password;
 };
